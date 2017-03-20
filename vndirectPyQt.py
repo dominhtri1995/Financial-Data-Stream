@@ -69,13 +69,6 @@ def get_data(ticker, bs, ic, cf):
 	ticker = ticker.upper()
 	tickers = ticker.split(",")
 	# determine if application is a script file or frozen exe
-	if getattr(sys, 'frozen', False):
-		dir = os.path.dirname(sys.executable)
-	elif __file__:
-		dir = os.path.dirname(__file__)
-	else:
-		logging.info("detect app")
-		dir = os.getcwd()
 	
 	for ticker in tickers:
 		
@@ -113,7 +106,14 @@ class myThread(threading.Thread):
 # global variable go here
 lock = Semaphore(3)
 threads = []
-
+dir="./"
+if getattr(sys, 'frozen', False):
+	dir = os.path.dirname(sys.executable)
+elif __file__:
+	dir = os.path.dirname(__file__)
+else:
+	logging.info("detect app")
+	dir = os.getcwd()
 
 ######### GUI go here #########
 class GUI(QtWidgets.QWidget):

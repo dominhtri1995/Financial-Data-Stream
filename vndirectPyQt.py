@@ -234,19 +234,19 @@ class MA(QtWidgets.QWidget):
     def createTable(self):
         self.hbox = QtWidgets.QHBoxLayout()
         self.filter = QtWidgets.QPushButton('', self)
-        self.filter.setIcon(QtGui.QIcon('./image/filter.png'))
+        self.filter.setIcon(QtGui.QIcon(resource_path('./image/filter.png')))
         self.dialogFilter = FilterDialog()
         self.connect_filter_dilaog(self.dialogFilter)
 
         self.filter.clicked.connect(self.filter_window)
 
         self.toexcel = QtWidgets.QPushButton('', self)
-        self.toexcel.setIcon(QtGui.QIcon('./image/excel.png'))
+        self.toexcel.setIcon(QtGui.QIcon(resource_path('./image/excel.png')))
         self.toexcel.clicked.connect(self.to_excel)
 
         # Clear filter
         self.clearfilter = QPushButton('', self)
-        self.clearfilter.setIcon(QtGui.QIcon('./image/reset.png'))
+        self.clearfilter.setIcon(QtGui.QIcon(resource_path('./image/reset.png')))
         self.clearfilter.clicked.connect(self.clear_filter)
 
         self.hbox.addStretch(1)

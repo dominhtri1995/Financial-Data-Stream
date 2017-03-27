@@ -5,6 +5,8 @@ from threading import Semaphore
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
 import encodings.idna
 import os
 import sqlite3
@@ -62,8 +64,8 @@ def get_statement(type, ticker, excel):
             excel.save()
         except:
             e = sys.exc_info()[0]
-            e1=sys.exc_info()[1]
-            logging.info(get_timestamp() + str(e) +str(e1))
+            e1 = sys.exc_info()[1]
+            logging.info(get_timestamp() + str(e) + str(e1))
             try:
                 driver.close()
             except:
@@ -298,48 +300,185 @@ class MA(QtWidgets.QWidget):
     def connect_filter_dilaog(self, filterDialog):
         filterDialog.containsTargetName.connect(self.filter_table)
 
-    @QtCore.pyqtSlot("QString")
-    def filter_table(self, targetName):
-        logging.info("filter: change table with tn: " + targetName)
+    @QtCore.pyqtSlot('QString', 'QString', 'QString', 'QString', 'QString', 'QString', 'QString', 'QString', 'QDate')
+    def filter_table(self, target_name, acquirer_name, deaL_size_sign, deal_size, deal_status \
+                     , target_industry, acquirer_indsutry, date_sign, date):
+
+        logging.info("filter: change table with tn: " + target_name)
         self.sort_statement = "SELECT ANN_DATE,SIZE,STATUS,TARGET_NAME,TARGET_INDUSTRY,ACQUIRER_NAME \
 							  , ACQUIRER_INDUSTRY,PERCENT,TARGET_NATION,FORM,NI_MULTIPLE \
-								FROM TRDATA" + " WHERE TARGET_NAME LIKE '%" + str(targetName) + "%'"
+								FROM TRDATA"
+
+        if (target_name != ""):
+            self.sort_statement = self.sort_statement + " WHERE TARGET_NAME LIKE '%" + target_name + "%'"
+        if (acquirer_name != ""):
+            if ("WHERE" in self.sort_statement):
+                self.sort_statement = self.sort_statement + " AND ACQUIRER_NAME LIKE '%" + acquirer_name + "%'"
+            else:
+                self.sort_statement = self.sort_statement + " WHERE ACQUIRER_NAME LIKE '%" + acquirer_name + "%'"
+        if (deal_size != ""):
+            if ("WHERE" in self.sort_statement):
+                self.sort_statement = self.sort_statement + " AND SIZE " + deaL_size_sign + " " + deal_size
+            else:
+                self.sort_statement = self.sort_statement + " WHERE SIZE " + deaL_size_sign + " " + deal_size
+
+        if (deal_status != "None"):
+            if ("WHERE" in self.sort_statement):
+                self.sort_statement = self.sort_statement + " AND STATUS LIKE '%" + deal_status + "%'"
+            else:
+                self.sort_statement = self.sort_statement + " WHERE STATUS LIKE '%" + deal_status + "%'"
+
+        if (target_industry != ""):
+            if ("WHERE" in self.sort_statement):
+                self.sort_statement = self.sort_statement + " AND TARGET_INDUSTRY LIKE '%" + target_industry + "%'"
+            else:
+                self.sort_statement = self.sort_statement + " WHERE TARGET_INDUSTRY LIKE '%" + target_industry + "%'"
+
+        if (acquirer_indsutry != ""):
+            if ("WHERE" in self.sort_statement):
+                self.sort_statement = self.sort_statement + " AND ACQUIRER_INDUSTRY LIKE '%" + acquirer_indsutry + "%'"
+            else:
+                self.sort_statement = self.sort_statement + " WHERE ACQUIRER_INDUSTRY LIKE '%" + acquirer_indsutry + "%'"
+
+        if (date_sign != "None"):
+            # date = "'"+str(date.year()) + "-" + str(date.month()) + "-" + str(date.day())+ "'"
+            if (date_sign == "After"):
+                date_sign = ">"
+            elif (date_sign == "Before"):
+                date_sign = "<"
+            else:
+                date_sign = "="
+
+            if ("WHERE" in self.sort_statement):
+                self.sort_statement = self.sort_statement + " AND ANN_DATE " + date_sign + " '" + date.toString(
+                    format=Qt.ISODate) + "'"
+            else:
+                self.sort_statement = self.sort_statement + " WHERE ANN_DATE " + date_sign + " '" + date.toString(
+                    format=Qt.ISODate) + "'"
+
+        print(self.sort_statement)
         self.execute_sql_statement()
 
 
 class FilterDialog(QDialog):
-    containsTargetName = QtCore.pyqtSignal('QString')
+    containsTargetName = QtCore.pyqtSignal('QString', 'QString', 'QString', 'QString', 'QString', 'QString', 'QString',
+                                           'QString', 'QDate')
 
     def __init__(self, parent=None):
         super(FilterDialog, self).__init__(parent)
         self.initUI()
-        self.filter = 0
 
     def initUI(self):
+        self.edit_to_clear = []
+        self.combo_to_clear = []
+
         self.mainlayout = QVBoxLayout()
         self.mainlayout.setContentsMargins(20, 20, 20, 20)
-        label = QLabel()
-        label.setText("Target Name (contains)")
-        targetNameEdit = QLineEdit()
-        targetNameEdit.setPlaceholderText("Keywords for Target name")
-        formlayout = QtWidgets.QFormLayout()
-        formlayout.addRow(label, targetNameEdit)
-        formlayout.setSpacing(5)
+        label_target_name = QLabel()
+        label_target_name.setText("Target Name (contains):")
+        target_name_edit = QLineEdit()
+        target_name_edit.setPlaceholderText("Keywords")
 
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.buttonBox.button(QDialogButtonBox.Ok).clicked.connect(lambda: self.closeok(targetNameEdit.text()))
+        label_acquirer_name = QLabel()
+        label_acquirer_name.setText("Acquirer Name (contains):")
+        acquirer_name_edit = QLineEdit()
+        acquirer_name_edit.setPlaceholderText("Keywords")
+
+        label_deal_size = QLabel()
+        label_deal_size.setText("Deal Size :")
+        deal_size_edit = QLineEdit()
+        deal_size_edit.setPlaceholderText("Size in m$")
+
+        deal_size_layout = QHBoxLayout()
+        combo_deal_size = QComboBox(self)
+        combo_deal_size.addItem(">")
+        combo_deal_size.addItem("=")
+        combo_deal_size.addItem("<")
+        combo_deal_size.addItem(">=")
+        combo_deal_size.addItem("<=")
+        deal_size_layout.addWidget(combo_deal_size)
+        deal_size_layout.addWidget(deal_size_edit)
+
+        label_status = QLabel()
+        label_status.setText("Deal Status :")
+        combo_status = QComboBox(self)
+        combo_status.addItem("None")
+        combo_status.addItem("Completed")
+        combo_status.addItem("Pending")
+        combo_status.addItem("Rumor")
+        combo_status.addItem("Seeking Buyer")
+        combo_status.addItem("Unknown")
+        combo_status.addItem("Withdrawn")
+
+        label_target_industry = QLabel()
+        label_target_industry.setText("Target Industry :")
+        target_industry_edit = QLineEdit()
+        target_industry_edit.setPlaceholderText("Keywords")
+
+        label_acquirer_industry = QLabel()
+        label_acquirer_industry.setText("Acquirer Industry :")
+        acquirer_industry_edit = QLineEdit()
+        acquirer_industry_edit.setPlaceholderText("Keywords")
+
+        ####calender
+        calendar_layout = QHBoxLayout()
+        label_calendar = QLabel()
+        label_calendar.setText("Date :")
+        cal = QCalendarWidget()
+        cal.setGridVisible(True)
+        combo_calendar = QComboBox(self)
+        combo_calendar.addItem("None")
+        combo_calendar.addItem("After")
+        combo_calendar.addItem("Equal")
+        combo_calendar.addItem("Before")
+        calendar_layout.addWidget(combo_calendar)
+        calendar_layout.addWidget(cal)
+
+        formlayout = QtWidgets.QFormLayout()
+        formlayout.addRow(label_target_name, target_name_edit)
+        formlayout.addRow(label_acquirer_name, acquirer_name_edit)
+        formlayout.addRow(label_deal_size, deal_size_layout)
+        formlayout.addRow(label_status, combo_status)
+        formlayout.addRow(label_target_industry, target_industry_edit)
+        formlayout.addRow(label_acquirer_industry, acquirer_industry_edit)
+        formlayout.addRow(label_calendar, combo_calendar)
+        formlayout.addRow(cal)
+        formlayout.setSpacing(15)
+        formlayout.setLabelAlignment(Qt.AlignLeft)
+
+        self.edit_to_clear.extend((target_name_edit, acquirer_name_edit \
+                                       , deal_size_edit, target_industry_edit, acquirer_industry_edit))
+
+        self.combo_to_clear.extend((combo_status, combo_calendar, combo_deal_size))
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Reset | QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox.button(QDialogButtonBox.Reset).clicked.connect(self.clear_form)
+        self.buttonBox.button(QDialogButtonBox.Ok).clicked.connect(lambda: self.closeok(target_name_edit.text() \
+                                                                                        , acquirer_name_edit.text() \
+                                                                                        , combo_deal_size.currentText() \
+                                                                                        , deal_size_edit.text() \
+                                                                                        , combo_status.currentText() \
+                                                                                        , target_industry_edit.text() \
+                                                                                        , acquirer_industry_edit.text() \
+                                                                                        , combo_calendar.currentText() \
+                                                                                        , cal.selectedDate()))
         self.buttonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.close)
 
         self.mainlayout.addItem(formlayout)
         self.mainlayout.addWidget(self.buttonBox)
         self.setLayout(self.mainlayout)
 
-    def closeok(self, targetName):
-        # self.filter =1
+    def closeok(self, target_name, acquirer_name, deaL_size_sign, deal_size, deal_status \
+                , target_industry, acquirer_indsutry, date_sign, date):
         logging.info("filterDialog applied")
-        self.containsTargetName.emit(targetName)
+        self.containsTargetName.emit(target_name, acquirer_name, deaL_size_sign, deal_size, deal_status \
+                                     , target_industry, acquirer_indsutry, date_sign, date)
+        # self.close()
 
-    # self.close()
+    def clear_form(self):
+        for edit in self.edit_to_clear:
+            edit.clear()
+        for combo in self.combo_to_clear:
+            combo.setCurrentIndex(0)
 
 
 logging.basicConfig(filename='process.log', level=logging.INFO)

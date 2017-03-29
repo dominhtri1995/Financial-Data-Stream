@@ -13,7 +13,8 @@ import sqlite3
 import logging
 import datetime
 import time
-
+import urllib.request
+from userdata import *
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -65,7 +66,7 @@ def get_statement(type, ticker, excel):
         except:
             e = sys.exc_info()[0]
             e1 = sys.exc_info()[1]
-            logging.info(get_timestamp() + str(e) + str(e1))
+            # logging.info(get_timestamp() + str(e) + str(e1))
             try:
                 driver.close()
             except:
@@ -85,7 +86,7 @@ def get_data(ticker, bs, ic, cf):
     for ticker in tickers:
 
         excelwriter = pd.ExcelWriter(os.path.join(dir, ticker + ".xlsx"))
-        logging.info(get_timestamp() + os.path.join(dir, ticker + ".xlsx"))
+        # logging.info(get_timestamp() + os.path.join(dir, ticker + ".xlsx"))
         if (bs == 1):
             # text.insert(INSERT,"Getting Balance Sheet")
             thread1 = myThread(1, "bs", ticker, excelwriter)
@@ -110,7 +111,7 @@ class myThread(threading.Thread):
         self.excelwriter = excelwriter
 
     def run(self):
-        logging.info("Starting " + self.name)
+        # logging.info("Starting " + self.name)
         get_statement(self.name, self.ticker, self.excelwriter)
 
 
@@ -124,7 +125,7 @@ if getattr(sys, 'frozen', False):
 elif __file__:
     dir = os.path.dirname(__file__)
 else:
-    logging.info("detect app")
+    # logging.info("detect app")
     dir = os.getcwd()
 
 
@@ -201,7 +202,7 @@ class GUI(QtWidgets.QWidget):
         overall_layout.addWidget(self.tabs)
 
         self.setLayout(overall_layout)
-        self.setGeometry(50, 50, 1100, 1100)
+        self.setGeometry(50, 50, 1100, 700)
         self.setWindowTitle('Whirlpool-data')
         self.show()
 
@@ -249,7 +250,7 @@ class MA(QtWidgets.QWidget):
         # Clear filter
         self.clearfilter = QPushButton('', self)
         self.clearfilter.setIcon(QtGui.QIcon(resource_path('./image/reset.png')))
-        self.clearfilter.clicked.connect(self.clear_filter)
+        self.clearfilter.clicked.connect(self.update_ma_data)
 
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.clearfilter)
@@ -356,9 +357,27 @@ class MA(QtWidgets.QWidget):
                 self.sort_statement = self.sort_statement + " WHERE ANN_DATE " + date_sign + " '" + date.toString(
                     format=Qt.ISODate) + "'"
 
-        print(self.sort_statement)
+        # print(self.sort_statement)
         self.execute_sql_statement()
 
+    def update_ma_data(self):
+        url= "https://www.dropbox.com/s/ifcndoysd43vtoh/MAVietnam.csv?dl=1"
+        u = urllib.request.urlopen(url)
+        data = u.read()
+        u.close()
+
+        with open("temp.csv", "wb") as f:
+            f.write(data)
+
+        self.conn = sqlite3.connect(resource_path('./testDB.db'))
+        self.conn.execute("DELETE FROM TRDATA;")
+        df = pd.read_csv("temp.csv",skiprows=1)
+
+        for field in df.itertuples(index=False):
+            self.conn.execute("INSERT INTO TRDATA VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);",field)
+        self.conn.commit()
+        os.remove("temp.csv")
+        self.clear_filter()
 
 class FilterDialog(QDialog):
     containsTargetName = QtCore.pyqtSignal('QString', 'QString', 'QString', 'QString', 'QString', 'QString', 'QString',
@@ -481,7 +500,8 @@ class FilterDialog(QDialog):
             combo.setCurrentIndex(0)
 
 
-logging.basicConfig(filename='process.log', level=logging.INFO)
+# logging.basicConfig(filename='/Users/process.log', level=logging.INFO)
+get_ip()
 app = QtWidgets.QApplication(sys.argv)
 gui = GUI()
 sys.exit(app.exec_())
